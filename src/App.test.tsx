@@ -1,9 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { onSessionChange, type Session } from './api/auth'
+import { listExercises } from './api/exercises'
 import App from './App'
 
 vi.mock('./api/auth')
+vi.mock('./api/exercises')
 
 // Only the fields App reads; the cast keeps the test focused on behaviour, not Supabase's full type.
 const fakeSession = { user: { email: 'lifter@example.com' } } as Session
@@ -31,11 +33,13 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
   })
 
-  it('shows the signed-in user when signed in', () => {
+  it('shows the signed-in user and their exercises when signed in', async () => {
     mockSession(fakeSession)
+    vi.mocked(listExercises).mockResolvedValue([])
     render(<App />)
 
     expect(screen.getByText('Signed in as lifter@example.com')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Exercises' })).toBeInTheDocument()
   })
 })
