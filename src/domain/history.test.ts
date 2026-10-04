@@ -112,9 +112,10 @@ describe('groupIntoSessions', () => {
     expect(reps).toEqual([6, 7, 5])
   })
 
-  it('strips workout details so sessions match the progression engine input', () => {
+  it('keeps the session date but strips workout details from each set', () => {
     const [session] = groupIntoSessions([historySet('a', '2026-09-01T10:00:00+00:00', 8)])
 
+    expect(session.performedAt).toBe('2026-09-01T10:00:00+00:00')
     expect(session.sets[0]).toEqual({ reps: 8, weight: 100, rpe: null, isWarmup: false })
   })
 })

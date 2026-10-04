@@ -1,10 +1,16 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { signOut, type Session } from './api/auth'
 import { AuthScreen } from './features/auth/AuthScreen'
 import { useSession } from './features/auth/useSession'
 import { ExercisesScreen } from './features/exercises/ExercisesScreen'
 import { HistoryScreen } from './features/history/HistoryScreen'
 import { WorkoutScreen } from './features/workout/WorkoutScreen'
+
+// Loaded on first visit to the tab: the chart library roughly doubles the bundle,
+// and the Workout screen (what you open at the gym) shouldn't wait for it.
+const ProgressScreen = lazy(() =>
+  import('./features/progress/ProgressScreen').then((module) => ({ default: module.ProgressScreen })),
+)
 
 function App() {
   const { session, isLoading } = useSession()
@@ -24,11 +30,12 @@ function App() {
   return <SignedInHome session={session} />
 }
 
-type Tab = 'workout' | 'history' | 'exercises'
+type Tab = 'workout' | 'history' | 'progress' | 'exercises'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'workout', label: 'Workout' },
   { id: 'history', label: 'History' },
+  { id: 'progress', label: 'Progress' },
   { id: 'exercises', label: 'Exercises' },
 ]
 
@@ -39,10 +46,17 @@ function TabScreen({ tab }: { tab: Tab }) {
   if (tab === 'history') {
     return <HistoryScreen />
   }
+  if (tab === 'progress') {
+    return (
+      <Suspense fallback={<p role="status" className="text-slate-400">Loading…</p>}>
+        <ProgressScreen />
+      </Suspense>
+    )
+  }
   return <ExercisesScreen />
 }
 
-// The signed-in shell. Three tabs don't justify a router dependency, so plain state picks the screen.
+// The signed-in shell. A handful of tabs doesn't justify a router dependency, so plain state picks the screen.
 function SignedInHome({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>('workout')
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -76,14 +90,14 @@ function SignedInHome({ session }: { session: Session }) {
         </button>
       </header>
 
-      <nav className="mb-6 grid grid-cols-3 gap-1 rounded-xl bg-slate-900 p-1">
+      <nav className="mb-6 grid grid-cols-4 gap-1 rounded-xl bg-slate-900 p-1">
         {TABS.map(({ id, label }) => (
           <button
             key={id}
             type="button"
             aria-current={tab === id ? 'page' : undefined}
             onClick={() => setTab(id)}
-            className="rounded-lg py-3 font-medium text-slate-400 aria-[current=page]:bg-slate-700 aria-[current=page]:text-slate-100"
+            className="rounded-lg py-3 text-sm font-medium text-slate-400 aria-[current=page]:bg-slate-700 aria-[current=page]:text-slate-100"
           >
             {label}
           </button>

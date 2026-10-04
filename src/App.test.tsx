@@ -61,6 +61,20 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'History' })).toBeInTheDocument()
   })
 
+  it('switches to the progress tab', async () => {
+    mockSession(fakeSession)
+    vi.mocked(listExercises).mockResolvedValue([])
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Progress' }))
+
+    // The tab is lazy-loaded, and the first import compiles the chart library,
+    // which can take longer than findBy's default 1s in a test run.
+    expect(
+      await screen.findByRole('heading', { name: 'Progress' }, { timeout: 10_000 }),
+    ).toBeInTheDocument()
+  })
+
   it('switches to the exercises tab', async () => {
     mockSession(fakeSession)
     vi.mocked(listExercises).mockResolvedValue([])

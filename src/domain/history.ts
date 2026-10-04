@@ -1,4 +1,5 @@
-import type { LoggedSet, Session } from './progression'
+import type { DatedSession } from './progress'
+import type { LoggedSet } from './progression'
 
 export type HistorySet = LoggedSet & {
   workoutId: string
@@ -58,8 +59,12 @@ export function removeSetFromGroups(groups: ExerciseGroup[], setId: string): Exe
     .filter((group) => group.sets.length > 0)
 }
 
-/** Groups a flat list of sets into one session per workout, newest workout first. */
-export function groupIntoSessions(sets: HistorySet[]): Session[] {
+/**
+ * Groups a flat list of sets into one session per workout, newest workout first.
+ * Each session keeps its date (the progress chart needs it); the progression
+ * engine simply ignores the extra field.
+ */
+export function groupIntoSessions(sets: HistorySet[]): DatedSession[] {
   const byWorkout = new Map<string, { performedAt: string; sets: LoggedSet[] }>()
 
   for (const set of sets) {
@@ -74,5 +79,4 @@ export function groupIntoSessions(sets: HistorySet[]): Session[] {
 
   return [...byWorkout.values()]
     .sort((a, b) => Date.parse(b.performedAt) - Date.parse(a.performedAt))
-    .map((workout) => ({ sets: workout.sets }))
 }

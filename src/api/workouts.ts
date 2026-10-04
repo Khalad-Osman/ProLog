@@ -1,4 +1,5 @@
 import { groupByExercise, groupIntoSessions, type ExerciseGroup } from '../domain/history'
+import type { DatedSession } from '../domain/progress'
 import type { Session } from '../domain/progression'
 import { supabase } from '../lib/supabase'
 import type { Tables } from '../types/database'
@@ -24,6 +25,10 @@ export type NewWorkoutSet = Omit<WorkoutSet, 'id'> & { workoutId: string }
 // Enough to always cover the last two sessions (all the progression rules look at),
 // while keeping the request small as history grows.
 const HISTORY_SET_LIMIT = 100
+
+// Roughly a year of training at ~20 sets per exercise per week. Plenty for a trend
+// line, and still one modest request.
+const PROGRESS_SET_LIMIT = 1000
 
 function toWorkout(row: Tables<'workouts'>): Workout {
   return { id: row.id, performedAt: row.performed_at, notes: row.notes }
@@ -133,20 +138,23 @@ export async function deleteSet(id: string): Promise<void> {
 }
 
 /**
- * Past sessions for one exercise, newest first, ready for the progression engine.
- * The current workout is excluded so the recommendation doesn't shift mid-session.
+ * An exercise's most recent sets, grouped into sessions, newest first.
+ * Shared by recommendations and the progress chart, which only differ in how
+ * far back they look and whether the current workout counts.
  */
-export async function getExerciseHistory(
+async function fetchExerciseSessions(
   exerciseId: string,
-  currentWorkoutId: string,
-): Promise<Session[]> {
-  const { data, error } = await supabase
+  setLimit: number,
+  excludeWorkoutId?: string,
+): Promise<DatedSession[]> {
+  let query = supabase
     .from('sets')
     .select('reps, weight, rpe, is_warmup, workout_id, workouts(performed_at)')
     .eq('exercise_id', exerciseId)
-    .neq('workout_id', currentWorkoutId)
-    .order('created_at', { ascending: false })
-    .limit(HISTORY_SET_LIMIT)
+  if (excludeWorkoutId !== undefined) {
+    query = query.neq('workout_id', excludeWorkoutId)
+  }
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(setLimit)
   if (error) {
     throw new Error(error.message)
   }
@@ -159,7 +167,26 @@ export async function getExerciseHistory(
     rpe: row.rpe,
     isWarmup: row.is_warmup,
   }))
-  return groupIntoSessions(historySets)
+  const sessions = groupIntoSessions(historySets)
+  // Hitting the limit means the oldest session was probably cut part-way through.
+  // A partial session could show a misleading top weight, so leave it out.
+  return data.length === setLimit ? sessions.slice(0, -1) : sessions
+}
+
+/**
+ * Past sessions for one exercise, newest first, ready for the progression engine.
+ * The current workout is excluded so the recommendation doesn't shift mid-session.
+ */
+export async function getExerciseHistory(
+  exerciseId: string,
+  currentWorkoutId: string,
+): Promise<Session[]> {
+  return fetchExerciseSessions(exerciseId, HISTORY_SET_LIMIT, currentWorkoutId)
+}
+
+/** Dated sessions for one exercise, for the progress chart. */
+export async function getExerciseProgress(exerciseId: string): Promise<DatedSession[]> {
+  return fetchExerciseSessions(exerciseId, PROGRESS_SET_LIMIT)
 }
 
 export type PastWorkout = Workout & {
