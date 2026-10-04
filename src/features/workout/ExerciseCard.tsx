@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Exercise } from '../../api/exercises'
 import { addSet, deleteSet, getExerciseHistory, type WorkoutSet } from '../../api/workouts'
+import { SetForm, type SetValues } from '../../components/SetForm'
 import { recommendNextSession, type Recommendation } from '../../domain/progression'
 import { formatSet } from '../../domain/workout'
-import { LogSetForm, type SetValues } from './LogSetForm'
 
 type ExerciseCardProps = {
   exercise: Exercise
@@ -154,11 +154,11 @@ export function ExerciseCard({ exercise, workoutId, sets, onSetLogged, onSetDele
 
       {/* Wait for the recommendation so the steppers start at the suggested values. */}
       {state.status !== 'loading' && (
-        <LogSetForm
+        <SetForm
           weightStep={exercise.increment}
-          initialWeight={startingValues.weight}
-          initialReps={startingValues.reps}
-          onLog={handleLog}
+          initialValues={{ ...startingValues, rpe: null, isWarmup: false }}
+          submitLabel="Log set"
+          onSubmit={handleLog}
         />
       )}
     </section>

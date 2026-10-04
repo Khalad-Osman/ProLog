@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Stepper } from '../../components/Stepper'
-import { RPE_CHOICES } from '../../domain/workout'
+import { RPE_CHOICES } from '../domain/workout'
+import { Stepper } from './Stepper'
 
 export type SetValues = {
   weight: number
@@ -9,26 +9,29 @@ export type SetValues = {
   isWarmup: boolean
 }
 
-type LogSetFormProps = {
+type SetFormProps = {
   weightStep: number
-  initialWeight: number
-  initialReps: number
-  onLog: (values: SetValues) => Promise<void>
+  initialValues: SetValues
+  submitLabel: string
+  onSubmit: (values: SetValues) => Promise<void>
+  /** Shows a Cancel button when provided (used when editing an existing set). */
+  onCancel?: () => void
 }
 
-export function LogSetForm({ weightStep, initialWeight, initialReps, onLog }: LogSetFormProps) {
-  const [weight, setWeight] = useState(initialWeight)
-  const [reps, setReps] = useState(initialReps)
-  const [rpe, setRpe] = useState<number | null>(null)
-  const [isWarmup, setIsWarmup] = useState(false)
+// Shared by logging a new set during a workout and editing a set in history.
+export function SetForm({ weightStep, initialValues, submitLabel, onSubmit, onCancel }: SetFormProps) {
+  const [weight, setWeight] = useState(initialValues.weight)
+  const [reps, setReps] = useState(initialValues.reps)
+  const [rpe, setRpe] = useState(initialValues.rpe)
+  const [isWarmup, setIsWarmup] = useState(initialValues.isWarmup)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleLog() {
+  async function handleSubmit() {
     setError(null)
     setIsSaving(true)
     try {
-      await onLog({ weight, reps, rpe, isWarmup })
+      await onSubmit({ weight, reps, rpe, isWarmup })
       // Weight and reps stay as they are: the next set is usually the same.
       // RPE and warmup are per-set judgements, so they reset.
       setRpe(null)
@@ -80,14 +83,26 @@ export function LogSetForm({ weightStep, initialWeight, initialReps, onLog }: Lo
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={handleLog}
-        disabled={isSaving}
-        className="w-full rounded-lg bg-emerald-500 py-4 text-lg font-semibold text-slate-950 disabled:opacity-60"
-      >
-        {isSaving ? 'Saving…' : 'Log set'}
-      </button>
+      <div className="flex gap-3">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="flex-1 rounded-lg border border-slate-700 py-4 text-lg disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isSaving}
+          className="flex-1 rounded-lg bg-emerald-500 py-4 text-lg font-semibold text-slate-950 disabled:opacity-60"
+        >
+          {isSaving ? 'Saving…' : submitLabel}
+        </button>
+      </div>
     </div>
   )
 }

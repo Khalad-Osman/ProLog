@@ -111,6 +111,20 @@ export async function addSet(set: NewWorkoutSet): Promise<WorkoutSet> {
   return toWorkoutSet(data)
 }
 
+/** Changes a set's logged values. Which workout and exercise it belongs to never changes. */
+export async function updateSet(
+  id: string,
+  values: { weight: number; reps: number; rpe: number | null; isWarmup: boolean },
+): Promise<void> {
+  const { error } = await supabase
+    .from('sets')
+    .update({ weight: values.weight, reps: values.reps, rpe: values.rpe, is_warmup: values.isWarmup })
+    .eq('id', id)
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
 export async function deleteSet(id: string): Promise<void> {
   const { error } = await supabase.from('sets').delete().eq('id', id)
   if (error) {
@@ -158,17 +172,20 @@ export const HISTORY_PAGE_SIZE = 20
  * One page of past workouts, newest first, each with its sets grouped by exercise.
  * Workouts, sets and exercise names come back in a single request (PostgREST
  * follows the foreign keys), rather than one request per workout.
+ *
+ * @param offset How many workouts the caller already has. An offset (rather than a
+ *               page number) stays correct after the user deletes a loaded workout.
  */
 export async function listPastWorkouts(
-  pageIndex: number,
+  offset: number,
 ): Promise<{ workouts: PastWorkout[]; hasMore: boolean }> {
-  const from = pageIndex * HISTORY_PAGE_SIZE
+  const from = offset
   // Ask for one extra row: if it comes back, there's at least one more page.
-  const to = from + HISTORY_PAGE_SIZE
+  const to = offset + HISTORY_PAGE_SIZE
   const { data, error } = await supabase
     .from('workouts')
     .select(
-      'id, performed_at, notes, sets(id, exercise_id, reps, weight, rpe, is_warmup, created_at, exercises(name))',
+      'id, performed_at, notes, sets(id, exercise_id, reps, weight, rpe, is_warmup, created_at, exercises(name, increment))',
     )
     .order('performed_at', { ascending: false })
     .order('created_at', { referencedTable: 'sets' })
@@ -186,6 +203,7 @@ export async function listPastWorkouts(
         id: set.id,
         exerciseId: set.exercise_id,
         exerciseName: set.exercises.name,
+        exerciseIncrement: set.exercises.increment,
         reps: set.reps,
         weight: set.weight,
         rpe: set.rpe,

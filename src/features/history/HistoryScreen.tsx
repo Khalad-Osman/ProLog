@@ -1,23 +1,14 @@
 import { useEffect, useState } from 'react'
 import { listPastWorkouts, type PastWorkout } from '../../api/workouts'
-import { formatSet } from '../../domain/workout'
+import { PastWorkoutCard } from './PastWorkoutCard'
 
 type LoadStatus = 'loading' | 'error' | 'ready'
-
-// e.g. "Sat, Oct 4 · 6:30 PM", in the viewer's own locale and time zone.
-function formatWorkoutDate(performedAt: string): string {
-  const date = new Date(performedAt)
-  const day = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-  const time = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-  return `${day} · ${time}`
-}
 
 export function HistoryScreen() {
   const [workouts, setWorkouts] = useState<PastWorkout[]>([])
   const [status, setStatus] = useState<LoadStatus>('loading')
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
-  const [nextPage, setNextPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null)
@@ -29,7 +20,6 @@ export function HistoryScreen() {
         if (isCurrent) {
           setWorkouts(page.workouts)
           setHasMore(page.hasMore)
-          setNextPage(1)
           setStatus('ready')
         }
       })
@@ -44,14 +34,21 @@ export function HistoryScreen() {
     }
   }, [loadAttempt])
 
+  function updateWorkout(id: string, update: (current: PastWorkout) => PastWorkout) {
+    setWorkouts((current) => current.map((workout) => (workout.id === id ? update(workout) : workout)))
+  }
+
+  function removeWorkout(id: string) {
+    setWorkouts((current) => current.filter((workout) => workout.id !== id))
+  }
+
   async function handleLoadMore() {
     setLoadMoreError(null)
     setIsLoadingMore(true)
     try {
-      const page = await listPastWorkouts(nextPage)
+      const page = await listPastWorkouts(workouts.length)
       setWorkouts((current) => [...current, ...page.workouts])
       setHasMore(page.hasMore)
-      setNextPage(nextPage + 1)
     } catch (caught) {
       setLoadMoreError(caught instanceof Error ? caught.message : 'Could not load more workouts.')
     } finally {
@@ -92,7 +89,12 @@ export function HistoryScreen() {
       )}
 
       {workouts.map((workout) => (
-        <PastWorkoutCard key={workout.id} workout={workout} />
+        <PastWorkoutCard
+          key={workout.id}
+          workout={workout}
+          onChange={(update) => updateWorkout(workout.id, update)}
+          onDelete={removeWorkout}
+        />
       ))}
 
       {loadMoreError && (
@@ -112,33 +114,5 @@ export function HistoryScreen() {
         </button>
       )}
     </section>
-  )
-}
-
-function PastWorkoutCard({ workout }: { workout: PastWorkout }) {
-  const title = formatWorkoutDate(workout.performedAt)
-
-  return (
-    <article aria-label={title} className="space-y-3 rounded-xl bg-slate-900 p-4">
-      <h3 className="font-semibold">{title}</h3>
-
-      {workout.notes && <p className="whitespace-pre-line text-slate-300 italic">{workout.notes}</p>}
-
-      {workout.exercises.length === 0 && <p className="text-sm text-slate-400">No sets logged.</p>}
-
-      {workout.exercises.map((group) => (
-        <div key={group.exerciseId}>
-          <h4 className="text-sm font-medium text-emerald-300">{group.exerciseName}</h4>
-          <ol className="mt-1 space-y-1">
-            {group.sets.map((set) => (
-              <li key={set.id} className="text-slate-200 tabular-nums">
-                {formatSet(set)}
-                {set.isWarmup && <span className="ml-2 text-sm text-amber-300">warmup</span>}
-              </li>
-            ))}
-          </ol>
-        </div>
-      ))}
-    </article>
   )
 }
