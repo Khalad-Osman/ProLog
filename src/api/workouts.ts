@@ -1,4 +1,4 @@
-import { groupIntoSessions } from '../domain/history'
+import { groupByExercise, groupIntoSessions, type ExerciseGroup } from '../domain/history'
 import type { Session } from '../domain/progression'
 import { supabase } from '../lib/supabase'
 import type { Tables } from '../types/database'
@@ -146,4 +146,52 @@ export async function getExerciseHistory(
     isWarmup: row.is_warmup,
   }))
   return groupIntoSessions(historySets)
+}
+
+export type PastWorkout = Workout & {
+  exercises: ExerciseGroup[]
+}
+
+export const HISTORY_PAGE_SIZE = 20
+
+/**
+ * One page of past workouts, newest first, each with its sets grouped by exercise.
+ * Workouts, sets and exercise names come back in a single request (PostgREST
+ * follows the foreign keys), rather than one request per workout.
+ */
+export async function listPastWorkouts(
+  pageIndex: number,
+): Promise<{ workouts: PastWorkout[]; hasMore: boolean }> {
+  const from = pageIndex * HISTORY_PAGE_SIZE
+  // Ask for one extra row: if it comes back, there's at least one more page.
+  const to = from + HISTORY_PAGE_SIZE
+  const { data, error } = await supabase
+    .from('workouts')
+    .select(
+      'id, performed_at, notes, sets(id, exercise_id, reps, weight, rpe, is_warmup, created_at, exercises(name))',
+    )
+    .order('performed_at', { ascending: false })
+    .order('created_at', { referencedTable: 'sets' })
+    .range(from, to)
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const workouts = data.slice(0, HISTORY_PAGE_SIZE).map((row) => ({
+    id: row.id,
+    performedAt: row.performed_at,
+    notes: row.notes,
+    exercises: groupByExercise(
+      row.sets.map((set) => ({
+        id: set.id,
+        exerciseId: set.exercise_id,
+        exerciseName: set.exercises.name,
+        reps: set.reps,
+        weight: set.weight,
+        rpe: set.rpe,
+        isWarmup: set.is_warmup,
+      })),
+    ),
+  }))
+  return { workouts, hasMore: data.length > HISTORY_PAGE_SIZE }
 }

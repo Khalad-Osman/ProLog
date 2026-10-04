@@ -11,3 +11,9 @@ export function isWorkoutStale(performedAt: string, now: Date): boolean {
 
 /** RPE choices offered when logging a set. Half steps match the database's one decimal. */
 export const RPE_CHOICES = [6, 7, 7.5, 8, 8.5, 9, 9.5, 10]
+
+/** e.g. "100 × 8 @ RPE 8.5", or "100 × 8" when no RPE was logged. */
+export function formatSet(set: { weight: number; reps: number; rpe: number | null }): string {
+  const rpe = set.rpe === null ? '' : ` @ RPE ${set.rpe}`
+  return `${set.weight} × ${set.reps}${rpe}`
+}

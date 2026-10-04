@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { isWorkoutStale } from './workout'
+import { formatSet, isWorkoutStale } from './workout'
+
+describe('formatSet', () => {
+  it('shows weight, reps and RPE', () => {
+    expect(formatSet({ weight: 100, reps: 8, rpe: 8.5 })).toBe('100 × 8 @ RPE 8.5')
+  })
+
+  it('leaves out RPE when none was logged', () => {
+    expect(formatSet({ weight: 62.5, reps: 10, rpe: null })).toBe('62.5 × 10')
+  })
+})
 
 describe('isWorkoutStale', () => {
   const now = new Date('2026-10-04T18:00:00Z')

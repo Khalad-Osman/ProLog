@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Exercise } from '../../api/exercises'
 import { addSet, deleteSet, getExerciseHistory, type WorkoutSet } from '../../api/workouts'
 import { recommendNextSession, type Recommendation } from '../../domain/progression'
+import { formatSet } from '../../domain/workout'
 import { LogSetForm, type SetValues } from './LogSetForm'
 
 type ExerciseCardProps = {
@@ -39,11 +40,6 @@ function getStartingValues(
     return { weight: recommendation.weight, reps: recommendation.targetReps }
   }
   return { weight: 0, reps: exercise.repMin }
-}
-
-function formatSet(set: WorkoutSet): string {
-  const rpe = set.rpe === null ? '' : ` @ RPE ${set.rpe}`
-  return `${set.weight} × ${set.reps}${rpe}`
 }
 
 export function ExerciseCard({ exercise, workoutId, sets, onSetLogged, onSetDeleted }: ExerciseCardProps) {

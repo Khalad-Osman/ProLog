@@ -1,5 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import { groupIntoSessions, type HistorySet } from './history'
+import { groupByExercise, groupIntoSessions, type HistorySet, type NamedSet } from './history'
+
+function namedSet(id: string, exerciseId: string, reps: number): NamedSet {
+  return {
+    id,
+    exerciseId,
+    exerciseName: exerciseId === 'bench' ? 'Bench press' : 'Squat',
+    reps,
+    weight: 100,
+    rpe: null,
+    isWarmup: false,
+  }
+}
+
+describe('groupByExercise', () => {
+  it('returns no groups for no sets', () => {
+    expect(groupByExercise([])).toEqual([])
+  })
+
+  it('groups sets by exercise in the order exercises were first trained', () => {
+    const sets = [
+      namedSet('1', 'squat', 5),
+      namedSet('2', 'bench', 8),
+      namedSet('3', 'squat', 4),
+      namedSet('4', 'bench', 7),
+    ]
+
+    const groups = groupByExercise(sets)
+
+    expect(groups.map((group) => group.exerciseName)).toEqual(['Squat', 'Bench press'])
+    expect(groups[0].sets.map((set) => set.id)).toEqual(['1', '3'])
+    expect(groups[1].sets.map((set) => set.id)).toEqual(['2', '4'])
+  })
+})
 
 function historySet(workoutId: string, performedAt: string, reps: number): HistorySet {
   return { workoutId, performedAt, reps, weight: 100, rpe: null, isWarmup: false }

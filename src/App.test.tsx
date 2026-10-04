@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { onSessionChange, type Session } from './api/auth'
 import { listExercises } from './api/exercises'
+import { listPastWorkouts } from './api/workouts'
 import App from './App'
 
 vi.mock('./api/auth')
@@ -47,6 +48,17 @@ describe('App', () => {
     expect(screen.getByText('Signed in as lifter@example.com')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Workout' })).toBeInTheDocument()
+  })
+
+  it('switches to the history tab', async () => {
+    mockSession(fakeSession)
+    vi.mocked(listExercises).mockResolvedValue([])
+    vi.mocked(listPastWorkouts).mockResolvedValue({ workouts: [], hasMore: false })
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'History' }))
+
+    expect(await screen.findByRole('heading', { name: 'History' })).toBeInTheDocument()
   })
 
   it('switches to the exercises tab', async () => {

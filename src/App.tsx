@@ -3,6 +3,7 @@ import { signOut, type Session } from './api/auth'
 import { AuthScreen } from './features/auth/AuthScreen'
 import { useSession } from './features/auth/useSession'
 import { ExercisesScreen } from './features/exercises/ExercisesScreen'
+import { HistoryScreen } from './features/history/HistoryScreen'
 import { WorkoutScreen } from './features/workout/WorkoutScreen'
 
 function App() {
@@ -23,14 +24,25 @@ function App() {
   return <SignedInHome session={session} />
 }
 
-type Tab = 'workout' | 'exercises'
+type Tab = 'workout' | 'history' | 'exercises'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'workout', label: 'Workout' },
+  { id: 'history', label: 'History' },
   { id: 'exercises', label: 'Exercises' },
 ]
 
-// The signed-in shell. Two tabs don't justify a router dependency, so plain state picks the screen.
+function TabScreen({ tab }: { tab: Tab }) {
+  if (tab === 'workout') {
+    return <WorkoutScreen />
+  }
+  if (tab === 'history') {
+    return <HistoryScreen />
+  }
+  return <ExercisesScreen />
+}
+
+// The signed-in shell. Three tabs don't justify a router dependency, so plain state picks the screen.
 function SignedInHome({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>('workout')
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -64,7 +76,7 @@ function SignedInHome({ session }: { session: Session }) {
         </button>
       </header>
 
-      <nav className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-slate-900 p-1">
+      <nav className="mb-6 grid grid-cols-3 gap-1 rounded-xl bg-slate-900 p-1">
         {TABS.map(({ id, label }) => (
           <button
             key={id}
@@ -84,7 +96,7 @@ function SignedInHome({ session }: { session: Session }) {
         </p>
       )}
 
-      {tab === 'workout' ? <WorkoutScreen /> : <ExercisesScreen />}
+      <TabScreen tab={tab} />
     </main>
   )
 }
