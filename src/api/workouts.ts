@@ -6,6 +6,7 @@ import type { Tables } from '../types/database'
 export type Workout = {
   id: string
   performedAt: string
+  notes: string | null
 }
 
 export type WorkoutSet = {
@@ -23,6 +24,10 @@ export type NewWorkoutSet = Omit<WorkoutSet, 'id'> & { workoutId: string }
 // Enough to always cover the last two sessions (all the progression rules look at),
 // while keeping the request small as history grows.
 const HISTORY_SET_LIMIT = 100
+
+function toWorkout(row: Tables<'workouts'>): Workout {
+  return { id: row.id, performedAt: row.performed_at, notes: row.notes }
+}
 
 function toWorkoutSet(row: Tables<'sets'>): WorkoutSet {
   return {
@@ -42,7 +47,7 @@ export async function createWorkout(): Promise<Workout> {
   if (error) {
     throw new Error(error.message)
   }
-  return { id: data.id, performedAt: data.performed_at }
+  return toWorkout(data)
 }
 
 /** Returns null when the workout no longer exists (e.g. deleted on another device). */
@@ -51,7 +56,19 @@ export async function getWorkout(id: string): Promise<Workout | null> {
   if (error) {
     throw new Error(error.message)
   }
-  return data === null ? null : { id: data.id, performedAt: data.performed_at }
+  return data === null ? null : toWorkout(data)
+}
+
+/** Blank notes are stored as null so "no notes" has a single representation. */
+export async function updateWorkoutNotes(id: string, notes: string): Promise<void> {
+  const trimmed = notes.trim()
+  const { error } = await supabase
+    .from('workouts')
+    .update({ notes: trimmed === '' ? null : trimmed })
+    .eq('id', id)
+  if (error) {
+    throw new Error(error.message)
+  }
 }
 
 /** Also deletes the workout's sets (cascade in the database). */

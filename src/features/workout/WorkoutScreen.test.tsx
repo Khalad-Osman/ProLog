@@ -9,6 +9,7 @@ import {
   getExerciseHistory,
   getWorkout,
   listWorkoutSets,
+  updateWorkoutNotes,
   type WorkoutSet,
 } from '../../api/workouts'
 import type { Session } from '../../domain/progression'
@@ -60,7 +61,7 @@ describe('WorkoutScreen', () => {
     vi.resetAllMocks()
     localStorage.clear()
     vi.mocked(listExercises).mockResolvedValue([bench, squat])
-    vi.mocked(createWorkout).mockResolvedValue({ id: 'workout-1', performedAt: hoursAgo(0) })
+    vi.mocked(createWorkout).mockResolvedValue({ id: 'workout-1', performedAt: hoursAgo(0), notes: null })
     vi.mocked(getExerciseHistory).mockResolvedValue(benchHistoryReadyToIncrease)
   })
 
@@ -175,7 +176,7 @@ describe('WorkoutScreen', () => {
 
   it('resumes an unfinished workout, starting from the last logged set', async () => {
     saveStoredWorkout({ workoutId: 'workout-1', exerciseIds: [bench.id] })
-    vi.mocked(getWorkout).mockResolvedValue({ id: 'workout-1', performedAt: hoursAgo(1) })
+    vi.mocked(getWorkout).mockResolvedValue({ id: 'workout-1', performedAt: hoursAgo(1), notes: null })
     vi.mocked(listWorkoutSets).mockResolvedValue([loggedSet({ weight: 100, reps: 10 })])
     render(<WorkoutScreen />)
 
@@ -188,7 +189,7 @@ describe('WorkoutScreen', () => {
 
   it('does not resume a workout that is too old', async () => {
     saveStoredWorkout({ workoutId: 'old-workout', exerciseIds: [bench.id] })
-    vi.mocked(getWorkout).mockResolvedValue({ id: 'old-workout', performedAt: hoursAgo(24) })
+    vi.mocked(getWorkout).mockResolvedValue({ id: 'old-workout', performedAt: hoursAgo(24), notes: null })
     render(<WorkoutScreen />)
 
     expect(await screen.findByRole('button', { name: 'Start workout' })).toBeInTheDocument()
@@ -198,7 +199,7 @@ describe('WorkoutScreen', () => {
 
   it('deletes a logged set', async () => {
     saveStoredWorkout({ workoutId: 'workout-1', exerciseIds: [bench.id] })
-    vi.mocked(getWorkout).mockResolvedValue({ id: 'workout-1', performedAt: hoursAgo(1) })
+    vi.mocked(getWorkout).mockResolvedValue({ id: 'workout-1', performedAt: hoursAgo(1), notes: null })
     vi.mocked(listWorkoutSets).mockResolvedValue([loggedSet()])
     vi.mocked(deleteSet).mockResolvedValue()
     render(<WorkoutScreen />)
@@ -231,7 +232,7 @@ describe('WorkoutScreen', () => {
 
   it('keeps a workout with sets when finishing', async () => {
     saveStoredWorkout({ workoutId: 'workout-1', exerciseIds: [bench.id] })
-    vi.mocked(getWorkout).mockResolvedValue({ id: 'workout-1', performedAt: hoursAgo(1) })
+    vi.mocked(getWorkout).mockResolvedValue({ id: 'workout-1', performedAt: hoursAgo(1), notes: null })
     vi.mocked(listWorkoutSets).mockResolvedValue([loggedSet()])
     render(<WorkoutScreen />)
 
@@ -239,5 +240,83 @@ describe('WorkoutScreen', () => {
 
     expect(await screen.findByRole('button', { name: 'Start workout' })).toBeInTheDocument()
     expect(deleteWorkout).not.toHaveBeenCalled()
+  })
+
+  describe('notes', () => {
+    it('saves notes when the box loses focus', async () => {
+      vi.mocked(updateWorkoutNotes).mockResolvedValue()
+      render(<WorkoutScreen />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start workout' }))
+      const notes = await screen.findByLabelText(/notes/i)
+      fireEvent.change(notes, { target: { value: 'Slept badly, shoulder ok' } })
+      fireEvent.blur(notes)
+
+      await waitFor(() => {
+        expect(updateWorkoutNotes).toHaveBeenCalledWith('workout-1', 'Slept badly, shoulder ok')
+      })
+      expect(await screen.findByText('Saved')).toBeInTheDocument()
+    })
+
+    it('does not save when nothing changed', async () => {
+      render(<WorkoutScreen />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start workout' }))
+      fireEvent.blur(await screen.findByLabelText(/notes/i))
+
+      expect(updateWorkoutNotes).not.toHaveBeenCalled()
+    })
+
+    it('shows when notes fail to save', async () => {
+      vi.mocked(updateWorkoutNotes).mockRejectedValue(new Error('offline'))
+      render(<WorkoutScreen />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start workout' }))
+      const notes = await screen.findByLabelText(/notes/i)
+      fireEvent.change(notes, { target: { value: 'Felt strong' } })
+      fireEvent.blur(notes)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/not saved/i)
+    })
+
+    it('restores saved notes when resuming a workout', async () => {
+      saveStoredWorkout({ workoutId: 'workout-1', exerciseIds: [] })
+      vi.mocked(getWorkout).mockResolvedValue({
+        id: 'workout-1',
+        performedAt: hoursAgo(1),
+        notes: 'Gym was busy',
+      })
+      vi.mocked(listWorkoutSets).mockResolvedValue([])
+      render(<WorkoutScreen />)
+
+      expect(await screen.findByLabelText(/notes/i)).toHaveValue('Gym was busy')
+    })
+
+    it('saves unsaved notes on finish and keeps a workout that only has notes', async () => {
+      vi.mocked(updateWorkoutNotes).mockResolvedValue()
+      render(<WorkoutScreen />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start workout' }))
+      fireEvent.change(await screen.findByLabelText(/notes/i), {
+        target: { value: 'Skipped, knee sore' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Finish workout' }))
+
+      expect(await screen.findByRole('button', { name: 'Start workout' })).toBeInTheDocument()
+      expect(updateWorkoutNotes).toHaveBeenCalledWith('workout-1', 'Skipped, knee sore')
+      expect(deleteWorkout).not.toHaveBeenCalled()
+    })
+
+    it('does not finish when notes fail to save', async () => {
+      vi.mocked(updateWorkoutNotes).mockRejectedValue(new Error('offline'))
+      render(<WorkoutScreen />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start workout' }))
+      fireEvent.change(await screen.findByLabelText(/notes/i), { target: { value: 'Felt strong' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Finish workout' }))
+
+      expect(await screen.findByText(/could not be saved/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Finish workout' })).toBeInTheDocument()
+    })
   })
 })

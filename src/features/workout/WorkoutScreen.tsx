@@ -5,6 +5,7 @@ import {
   deleteWorkout,
   getWorkout,
   listWorkoutSets,
+  updateWorkoutNotes,
   type WorkoutSet,
 } from '../../api/workouts'
 import { isWorkoutStale } from '../../domain/workout'
@@ -14,11 +15,14 @@ import {
   saveStoredWorkout,
 } from './activeWorkoutStorage'
 import { ExerciseCard } from './ExerciseCard'
+import { WorkoutNotes, type NotesStatus } from './WorkoutNotes'
 
 type ActiveWorkout = {
   id: string
   exerciseIds: string[]
   sets: WorkoutSet[]
+  /** The notes as last saved to the database ('' when there are none). */
+  savedNotes: string
 }
 
 type ScreenState =
@@ -44,7 +48,10 @@ async function loadScreen(): Promise<{ exercises: Exercise[]; active: ActiveWork
   // Include exercises that have sets even if storage missed them, and drop any deleted since.
   const exerciseIds = [...new Set([...stored.exerciseIds, ...sets.map((set) => set.exerciseId)])]
   const existingIds = exerciseIds.filter((id) => exercises.some((exercise) => exercise.id === id))
-  return { exercises, active: { id: workout.id, exerciseIds: existingIds, sets } }
+  return {
+    exercises,
+    active: { id: workout.id, exerciseIds: existingIds, sets, savedNotes: workout.notes ?? '' },
+  }
 }
 
 export function WorkoutScreen() {
@@ -53,6 +60,9 @@ export function WorkoutScreen() {
   const [isBusy, setIsBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isPickingExercise, setIsPickingExercise] = useState(false)
+  // What's in the notes box right now, which may be ahead of what's saved.
+  const [notesDraft, setNotesDraft] = useState('')
+  const [notesStatus, setNotesStatus] = useState<NotesStatus>('idle')
 
   useEffect(() => {
     let isCurrent = true
@@ -60,6 +70,7 @@ export function WorkoutScreen() {
       .then((loaded) => {
         if (isCurrent) {
           setState({ status: 'ready', ...loaded })
+          setNotesDraft(loaded.active?.savedNotes ?? '')
         }
       })
       .catch((caught: unknown) => {
@@ -131,7 +142,9 @@ export function WorkoutScreen() {
     setIsBusy(true)
     try {
       const workout = await createWorkout()
-      setActive({ id: workout.id, exerciseIds: [], sets: [] })
+      setActive({ id: workout.id, exerciseIds: [], sets: [], savedNotes: '' })
+      setNotesDraft('')
+      setNotesStatus('idle')
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : 'Could not start a workout.')
     } finally {
@@ -139,12 +152,36 @@ export function WorkoutScreen() {
     }
   }
 
+  // Saves on blur rather than every keystroke: one request per edit, and nothing is
+  // lost because Finish also saves before closing the workout.
+  async function saveNotes(workout: ActiveWorkout): Promise<boolean> {
+    const draft = notesDraft.trim()
+    if (draft === workout.savedNotes) {
+      return true
+    }
+    setNotesStatus('saving')
+    try {
+      await updateWorkoutNotes(workout.id, draft)
+      updateActive((current) => ({ ...current, savedNotes: draft }))
+      setNotesStatus('saved')
+      return true
+    } catch {
+      setNotesStatus('error')
+      return false
+    }
+  }
+
   async function handleFinish(workout: ActiveWorkout) {
     setActionError(null)
     setIsBusy(true)
     try {
-      // An empty workout would only clutter history, so remove it rather than keep it.
-      if (workout.sets.length === 0) {
+      const notesSaved = await saveNotes(workout)
+      if (!notesSaved) {
+        setActionError('Your notes could not be saved. Try again before finishing.')
+        return
+      }
+      // A workout with no sets and no notes would only clutter history, so remove it.
+      if (workout.sets.length === 0 && notesDraft.trim() === '') {
         await deleteWorkout(workout.id)
       }
       setActive(null)
@@ -250,6 +287,16 @@ export function WorkoutScreen() {
           Add exercise
         </button>
       )}
+
+      <WorkoutNotes
+        value={notesDraft}
+        status={notesStatus}
+        onChange={(value) => {
+          setNotesDraft(value)
+          setNotesStatus('idle')
+        }}
+        onBlur={() => saveNotes(active)}
+      />
 
       {actionError && (
         <p role="alert" className="rounded-lg bg-red-950 px-4 py-3 text-red-200">
