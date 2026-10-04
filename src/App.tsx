@@ -3,6 +3,7 @@ import { signOut, type Session } from './api/auth'
 import { AuthScreen } from './features/auth/AuthScreen'
 import { useSession } from './features/auth/useSession'
 import { ExercisesScreen } from './features/exercises/ExercisesScreen'
+import { WorkoutScreen } from './features/workout/WorkoutScreen'
 
 function App() {
   const { session, isLoading } = useSession()
@@ -22,8 +23,16 @@ function App() {
   return <SignedInHome session={session} />
 }
 
-// The signed-in shell. Exercises is the only screen for now; navigation comes with the workout screen.
+type Tab = 'workout' | 'exercises'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'workout', label: 'Workout' },
+  { id: 'exercises', label: 'Exercises' },
+]
+
+// The signed-in shell. Two tabs don't justify a router dependency, so plain state picks the screen.
 function SignedInHome({ session }: { session: Session }) {
+  const [tab, setTab] = useState<Tab>('workout')
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,13 +64,27 @@ function SignedInHome({ session }: { session: Session }) {
         </button>
       </header>
 
+      <nav className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-slate-900 p-1">
+        {TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            aria-current={tab === id ? 'page' : undefined}
+            onClick={() => setTab(id)}
+            className="rounded-lg py-3 font-medium text-slate-400 aria-[current=page]:bg-slate-700 aria-[current=page]:text-slate-100"
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
       {error && (
         <p role="alert" className="mb-4 rounded-lg bg-red-950 px-4 py-3 text-red-200">
           {error}
         </p>
       )}
 
-      <ExercisesScreen />
+      {tab === 'workout' ? <WorkoutScreen /> : <ExercisesScreen />}
     </main>
   )
 }
