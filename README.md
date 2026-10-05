@@ -2,7 +2,7 @@
 
 A mobile-first workout logger that tells you what to do next session. Log your sets, and ProLog uses your history to recommend whether to **add weight**, **stay and add reps**, or **deload**, with a plain-English reason every time.
 
-**Live app:** https://LIVE-URL-HERE. Tap **Try the demo** to explore with a few weeks of sample workouts; no sign-up needed.
+**Live app:** [pro-log-mu.vercel.app](https://pro-log-mu.vercel.app). Tap **Try the demo** to explore with a few weeks of sample workouts; no sign-up needed.
 
 <p>
   <img src="docs/screenshots/workout.png" alt="Logging a workout, with a recommendation for the exercise" width="280">
