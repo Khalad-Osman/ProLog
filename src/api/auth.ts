@@ -23,6 +23,23 @@ export async function signUp(email: string, password: string): Promise<{ signedI
   return { signedIn: data.session !== null }
 }
 
+/**
+ * Signs in as a brand-new anonymous user for the demo. The database fills new
+ * anonymous users with sample workouts as they're created (see the
+ * seed_demo_data migration), so the demo is ready as soon as this resolves.
+ */
+export async function startDemo(): Promise<void> {
+  const { error } = await supabase.auth.signInAnonymously()
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+/** Demo users are anonymous: they have a session but no email address. */
+export function isDemoSession(session: Session): boolean {
+  return session.user.is_anonymous === true
+}
+
 export async function signOut(): Promise<void> {
   const { error } = await supabase.auth.signOut()
   if (error) {

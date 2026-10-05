@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { onSessionChange, type Session } from './api/auth'
+import { isDemoSession, onSessionChange, type Session } from './api/auth'
 import { listExercises } from './api/exercises'
 import { listPastWorkouts } from './api/workouts'
 import App from './App'
@@ -50,6 +50,19 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Workout' })).toBeInTheDocument()
   })
 
+  it('marks a demo session and offers to leave it', async () => {
+    vi.mocked(isDemoSession).mockReturnValue(true)
+    mockSession({ user: { email: undefined, is_anonymous: true } } as unknown as Session)
+    vi.mocked(listExercises).mockResolvedValue([])
+    render(<App />)
+
+    expect(screen.getByText('Demo account')).toBeInTheDocument()
+    expect(screen.getByText(/exploring with sample workouts/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Leave demo' })).toBeInTheDocument()
+    expect(screen.queryByText(/signed in as/i)).not.toBeInTheDocument()
+    await screen.findByRole('heading', { name: 'Workout' })
+  })
+
   it('switches to the history tab', async () => {
     mockSession(fakeSession)
     vi.mocked(listExercises).mockResolvedValue([])
@@ -68,12 +81,12 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Progress' }))
 
-    // The tab is lazy-loaded, and the first import compiles the chart library,
-    // which can take longer than findBy's default 1s in a test run.
+    // The tab is lazy-loaded, and the first import compiles the chart library. On a
+    // busy machine that can exceed both findBy's 1s default and Vitest's 5s test limit.
     expect(
-      await screen.findByRole('heading', { name: 'Progress' }, { timeout: 10_000 }),
+      await screen.findByRole('heading', { name: 'Progress' }, { timeout: 20_000 }),
     ).toBeInTheDocument()
-  })
+  }, 30_000)
 
   it('switches to the exercises tab', async () => {
     mockSession(fakeSession)

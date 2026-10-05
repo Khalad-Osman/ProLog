@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
-import { signOut, type Session } from './api/auth'
+import { isDemoSession, signOut, type Session } from './api/auth'
 import { AuthScreen } from './features/auth/AuthScreen'
 import { useSession } from './features/auth/useSession'
 import { ExercisesScreen } from './features/exercises/ExercisesScreen'
@@ -73,12 +73,17 @@ function SignedInHome({ session }: { session: Session }) {
     }
   }
 
+  const isDemo = isDemoSession(session)
+  const signOutLabel = isDemo ? 'Leave demo' : 'Sign out'
+
   return (
     <main className="mx-auto min-h-screen max-w-lg bg-slate-950 p-4 text-slate-100">
       <header className="mb-6 flex items-center justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold">ProLog</h1>
-          <p className="truncate text-sm text-slate-400">Signed in as {session.user.email}</p>
+          <p className="truncate text-sm text-slate-400">
+            {isDemo ? 'Demo account' : `Signed in as ${session.user.email}`}
+          </p>
         </div>
         <button
           type="button"
@@ -86,9 +91,16 @@ function SignedInHome({ session }: { session: Session }) {
           disabled={isSigningOut}
           className="shrink-0 rounded-lg border border-slate-700 px-4 py-3 disabled:opacity-60"
         >
-          {isSigningOut ? 'Signing out…' : 'Sign out'}
+          {isSigningOut ? 'Signing out…' : signOutLabel}
         </button>
       </header>
+
+      {isDemo && (
+        <p className="mb-6 rounded-lg border border-emerald-800 bg-emerald-950/50 px-4 py-3 text-sm text-slate-300">
+          You're exploring with sample workouts. Log a set, check History and Progress. Leaving the
+          demo ends this session for good.
+        </p>
+      )}
 
       <nav className="mb-6 grid grid-cols-4 gap-1 rounded-xl bg-slate-900 p-1">
         {TABS.map(({ id, label }) => (

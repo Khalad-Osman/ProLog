@@ -2,7 +2,7 @@
 
 A mobile-first workout logger that tells you what to do next session. Log your sets, and ProLog uses your history to recommend whether to **add weight**, **stay and add reps**, or **deload**, with a plain-English reason every time.
 
-**Live app:** https://LIVE-URL-HERE
+**Live app:** https://LIVE-URL-HERE. Tap **Try the demo** to explore with a few weeks of sample workouts; no sign-up needed.
 
 <p>
   <img src="docs/screenshots/workout.png" alt="Logging a workout, with a recommendation for the exercise" width="280">
@@ -18,6 +18,7 @@ A mobile-first workout logger that tells you what to do next session. Log your s
 - **History**: past workouts with notes and sets grouped by exercise, editable and deletable
 - **Progress charts**: top weight and estimated one-rep max over time, with a table view
 - **Private by design**: each user can only ever read or change their own data, enforced in the database
+- **One-tap demo**: visitors get their own temporary account, pre-filled with sample training
 
 ## How recommendations work
 
@@ -77,6 +78,7 @@ The browser talks to Postgres directly through Supabase, using a **public anon k
 - **Database constraints back up the UI's validation**: positive reps, non-negative weight, RPE between 6 and 10, a minimum rep count no higher than the maximum, and unique exercise names per user. Bad data is rejected even if someone bypasses the UI.
 - **Deletes cascade**: deleting a workout removes its sets, and deleting an account removes everything the account owns.
 - The **service-role key**, which bypasses RLS, is never used in frontend code.
+- **Demo visitors are isolated too.** "Try the demo" uses Supabase anonymous sign-in, so each visitor is a separate user with their own rows, under the same policies. A database trigger seeds the sample data when the anonymous user is created, in the same transaction, so it exists before the app loads its first screen. The trigger function can't be called from the browser, and real sign-ups are never seeded.
 
 The policies were checked against a local Postgres by signing in as two users and confirming that neither could read, change or delete the other's rows. The full schema is in [`supabase/migrations/`](supabase/migrations/).
 
@@ -101,7 +103,7 @@ Weights are stored as `numeric` rather than floating point, so values like 2.5 o
 
 ## Testing
 
-130 tests across the domain logic, shared components and every screen.
+133 tests across the domain logic, shared components and every screen.
 
 - **Domain**: every progression rule and edge case (RPE blocking an increase, missing RPE, warmups ignored, deload rounding), history grouping, and 1RM estimates.
 - **Screens**: loading, empty and error states, plus the main user flows, with the `api/` layer mocked.

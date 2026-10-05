@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { signIn, signUp } from '../../api/auth'
+import { signIn, signUp, startDemo } from '../../api/auth'
 import { AuthScreen } from './AuthScreen'
 
 vi.mock('../../api/auth')
@@ -14,6 +14,7 @@ describe('AuthScreen', () => {
   beforeEach(() => {
     vi.mocked(signIn).mockReset()
     vi.mocked(signUp).mockReset()
+    vi.mocked(startDemo).mockReset()
   })
 
   it('signs in with the entered email and password', async () => {
@@ -72,5 +73,27 @@ describe('AuthScreen', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/at least 6 characters/i)
     expect(signUp).not.toHaveBeenCalled()
+  })
+
+  it('starts the demo without asking for an email', async () => {
+    vi.mocked(startDemo).mockResolvedValue()
+    render(<AuthScreen />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo' }))
+
+    await waitFor(() => {
+      expect(startDemo).toHaveBeenCalled()
+    })
+    expect(signIn).not.toHaveBeenCalled()
+  })
+
+  it('shows an error when the demo cannot start', async () => {
+    vi.mocked(startDemo).mockRejectedValue(new Error('Anonymous sign-ins are disabled'))
+    render(<AuthScreen />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Anonymous sign-ins are disabled')
+    expect(screen.getByRole('button', { name: 'Try the demo' })).toBeEnabled()
   })
 })

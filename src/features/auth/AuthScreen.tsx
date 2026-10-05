@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { signIn, signUp } from '../../api/auth'
+import { signIn, signUp, startDemo } from '../../api/auth'
 
 type Mode = 'sign-in' | 'sign-up'
 
@@ -45,6 +45,19 @@ export function AuthScreen() {
       // On success the session listener in App swaps this screen out, so there's nothing else to do.
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Something went wrong. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleStartDemo() {
+    setError(null)
+    setMessage(null)
+    setIsSubmitting(true)
+    try {
+      await startDemo()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not start the demo. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -110,6 +123,20 @@ export function AuthScreen() {
         >
           {isSignUp ? 'Already have an account? Sign in' : 'New here? Create an account'}
         </button>
+
+        <div className="mt-6 border-t border-slate-800 pt-6">
+          <button
+            type="button"
+            onClick={handleStartDemo}
+            disabled={isSubmitting}
+            className="w-full rounded-lg border border-emerald-700 py-4 text-lg font-semibold text-emerald-300 disabled:opacity-60"
+          >
+            Try the demo
+          </button>
+          <p className="mt-2 text-center text-sm text-slate-400">
+            No sign-up. Comes with a few weeks of sample workouts.
+          </p>
+        </div>
       </div>
     </main>
   )
