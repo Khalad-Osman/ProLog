@@ -23,7 +23,20 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "exercises": {
+            "coach_reports": {
+                  Row: {
+                    "created_at": string,"id": string,"period_weeks": number,"sections": Json | null,"status": string,"topics": (string)[],"user_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"period_weeks": number,"sections"?: Json | null,"status"?: string,"topics": (string)[],"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"period_weeks"?: number,"sections"?: Json | null,"status"?: string,"topics"?: (string)[],"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"exercises": {
                   Row: {
                     "created_at": string,"id": string,"increment": number,"name": string,"rep_max": number,"rep_min": number,"user_id": string
                   }
@@ -80,7 +93,9 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "reserve_coach_report":
+{ Args: { "p_period_weeks": number,"p_topics": (string)[],"p_user_id": string }; Returns: string
+                           }
           }
           Enums: {
             [_ in never]: never
