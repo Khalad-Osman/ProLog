@@ -195,7 +195,7 @@ describe('HistoryScreen', () => {
       await openEditor()
       fireEvent.click(screen.getByRole('button', { name: 'Edit Bench press set 2' }))
       // The form starts from the set's current values, including its RPE.
-      expect(screen.getByLabelText('Weight')).toHaveTextContent('100')
+      expect(screen.getByLabelText('Weight')).toHaveValue('100')
       expect(screen.getByRole('button', { name: '8.5' })).toHaveAttribute('aria-pressed', 'true')
       fireEvent.click(screen.getByRole('button', { name: 'Increase Reps' }))
       fireEvent.click(screen.getByRole('button', { name: 'Increase Weight' }))

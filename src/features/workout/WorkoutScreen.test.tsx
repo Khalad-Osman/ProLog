@@ -91,8 +91,8 @@ describe('WorkoutScreen', () => {
     const card = await startWorkoutWith(bench)
 
     expect(await within(card).findByText('Add weight: 102.5 × 8')).toBeInTheDocument()
-    expect(within(card).getByLabelText('Weight')).toHaveTextContent('102.5')
-    expect(within(card).getByLabelText('Reps')).toHaveTextContent('8')
+    expect(within(card).getByLabelText('Weight')).toHaveValue('102.5')
+    expect(within(card).getByLabelText('Reps')).toHaveValue('8')
     expect(getExerciseHistory).toHaveBeenCalledWith(bench.id, 'workout-1')
   })
 
@@ -183,8 +183,8 @@ describe('WorkoutScreen', () => {
     const card = await screen.findByRole('region', { name: bench.name })
 
     expect(within(card).getByText(/100 × 10/)).toBeInTheDocument()
-    expect(await within(card).findByLabelText('Weight')).toHaveTextContent('100')
-    expect(within(card).getByLabelText('Reps')).toHaveTextContent('10')
+    expect(await within(card).findByLabelText('Weight')).toHaveValue('100')
+    expect(within(card).getByLabelText('Reps')).toHaveValue('10')
   })
 
   it('does not resume a workout that is too old', async () => {

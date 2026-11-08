@@ -45,8 +45,11 @@ export function SetForm({ weightStep, initialValues, submitLabel, onSubmit, onCa
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <Stepper label="Weight" value={weight} onChange={setWeight} step={weightStep} min={0} />
+      {/* Stacked on phones: side by side, two full-size +/- buttons leave too little
+          room for a typed value like 102.5. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* max matches the database's numeric(6, 2) weight column, so a typo like 20500 is caught here. */}
+        <Stepper label="Weight" value={weight} onChange={setWeight} step={weightStep} min={0} max={9999} allowDecimals />
         <Stepper label="Reps" value={reps} onChange={setReps} min={1} />
       </div>
 
