@@ -1,10 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { listCoachReports } from '../../api/coach'
 import { listExercises, type Exercise } from '../../api/exercises'
 import { getExerciseProgress } from '../../api/workouts'
 import type { DatedSession } from '../../domain/progress'
 import { ProgressScreen } from './ProgressScreen'
 
+vi.mock('../../api/coach')
 vi.mock('../../api/exercises')
 vi.mock('../../api/workouts')
 
@@ -26,6 +28,8 @@ describe('ProgressScreen', () => {
     vi.resetAllMocks()
     vi.mocked(listExercises).mockResolvedValue([bench, squat])
     vi.mocked(getExerciseProgress).mockResolvedValue(benchSessions)
+    // The coach has its own tests (CoachSection.test.tsx); here it just needs to load quietly.
+    vi.mocked(listCoachReports).mockResolvedValue([])
   })
 
   it('shows the first exercise with its latest values and a described chart', async () => {

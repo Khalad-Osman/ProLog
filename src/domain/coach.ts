@@ -31,6 +31,12 @@ export const PLATEAU_SESSIONS = 3
 export const MAX_COACH_NOTES = 20
 export const MAX_NOTE_LENGTH = 300
 
+/**
+ * Mirrors the per-user cap in reserve_coach_report, only so the UI can show how
+ * many reports are left. The database is what actually enforces it.
+ */
+export const COACH_DAILY_LIMIT_PER_USER = 2
+
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000
 
 export type CoachRequest = {
@@ -112,6 +118,23 @@ function isWithinPeriod(performedAt: string, periodStart: Date): boolean {
   return Date.parse(performedAt) >= periodStart.getTime()
 }
 
+/** The earliest moment a report covering the last `weeks` weeks includes. */
+export function getPeriodStart(weeks: number, now: Date): Date {
+  return new Date(now.getTime() - weeks * MS_PER_WEEK)
+}
+
+/**
+ * How many more reports the user can request today. Every attempt counts,
+ * including failed ones, matching the database. Days are UTC, like the database.
+ *
+ * @param attemptTimes created_at of the user's recent reports, in any order.
+ */
+export function countReportsLeftToday(attemptTimes: string[], now: Date): number {
+  const startOfUtcDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const usedToday = attemptTimes.filter((time) => Date.parse(time) >= startOfUtcDay).length
+  return Math.max(0, COACH_DAILY_LIMIT_PER_USER - usedToday)
+}
+
 /** @param points Oldest first, as buildProgressPoints returns them. */
 export function isPlateau(points: ProgressPoint[]): boolean {
   if (points.length <= PLATEAU_SESSIONS) {
@@ -178,7 +201,7 @@ export function buildCoachInput(
   workouts: CoachWorkout[],
   now: Date,
 ): CoachInput {
-  const periodStart = new Date(now.getTime() - request.weeks * MS_PER_WEEK)
+  const periodStart = getPeriodStart(request.weeks, now)
   const workoutsInPeriod = workouts.filter((workout) =>
     isWithinPeriod(workout.performedAt, periodStart),
   )

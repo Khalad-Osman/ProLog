@@ -64,6 +64,19 @@ export async function getWorkout(id: string): Promise<Workout | null> {
   return data === null ? null : toWorkout(data)
 }
 
+/** Workouts performed on or after `since`, newest first. The coach uses them for counts and notes. */
+export async function listWorkoutsSince(since: Date): Promise<Workout[]> {
+  const { data, error } = await supabase
+    .from('workouts')
+    .select()
+    .gte('performed_at', since.toISOString())
+    .order('performed_at', { ascending: false })
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data.map(toWorkout)
+}
+
 /** Blank notes are stored as null so "no notes" has a single representation. */
 export async function updateWorkoutNotes(id: string, notes: string): Promise<void> {
   const trimmed = notes.trim()

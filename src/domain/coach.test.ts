@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCoachInput,
+  COACH_DAILY_LIMIT_PER_USER,
+  countReportsLeftToday,
+  getPeriodStart,
   isPlateau,
   MAX_COACH_NOTES,
   MAX_NOTE_LENGTH,
@@ -57,6 +60,30 @@ describe('validateCoachRequest', () => {
 
   it('requires at least one exercise', () => {
     expect(validateCoachRequest(request({ exerciseIds: [] }))).toMatch(/exercise/)
+  })
+})
+
+describe('getPeriodStart', () => {
+  it('goes back the given number of whole weeks', () => {
+    expect(getPeriodStart(4, NOW).toISOString()).toBe('2026-10-04T12:00:00.000Z')
+  })
+})
+
+describe('countReportsLeftToday', () => {
+  it('starts the day with the full allowance', () => {
+    expect(countReportsLeftToday([], NOW)).toBe(COACH_DAILY_LIMIT_PER_USER)
+  })
+
+  it('only counts attempts since midnight UTC', () => {
+    const attempts = ['2026-11-01T00:30:00Z', '2026-10-31T23:59:00Z']
+
+    expect(countReportsLeftToday(attempts, NOW)).toBe(COACH_DAILY_LIMIT_PER_USER - 1)
+  })
+
+  it('never goes below zero', () => {
+    const attempts = ['2026-11-01T08:00:00Z', '2026-11-01T09:00:00Z', '2026-11-01T10:00:00Z']
+
+    expect(countReportsLeftToday(attempts, NOW)).toBe(0)
   })
 })
 

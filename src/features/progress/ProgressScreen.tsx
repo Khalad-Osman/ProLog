@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { listExercises, type Exercise } from '../../api/exercises'
 import { getExerciseProgress } from '../../api/workouts'
+import { ErrorWithRetry } from '../../components/ErrorWithRetry'
 import { buildProgressPoints, type ProgressPoint } from '../../domain/progress'
+import { CoachSection } from './CoachSection'
 import { formatShortDate, ProgressChart, SERIES } from './ProgressChart'
 
 type ExercisesState =
@@ -101,6 +103,8 @@ export function ProgressScreen() {
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-semibold">Progress</h2>
+
+      <CoachSection exercises={exercises} />
 
       <label className="block">
         <span className="text-sm text-slate-300">Exercise</span>
@@ -249,22 +253,5 @@ function ProgressTable({ points }: { points: ProgressPoint[] }) {
         ))}
       </tbody>
     </table>
-  )
-}
-
-function ErrorWithRetry({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="space-y-4">
-      <p role="alert" className="rounded-lg bg-red-950 px-4 py-3 text-red-200">
-        {message}
-      </p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="w-full rounded-lg border border-slate-700 py-4 text-lg"
-      >
-        Try again
-      </button>
-    </div>
   )
 }
