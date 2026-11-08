@@ -23,5 +23,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  // The coach function's pure logic is checked here too. Its Deno entry point
+  // (index.ts) is not, because it uses Deno globals and npm: imports.
+  "include": ["src", "supabase/functions/coach/report.ts", "supabase/functions/coach/report.test.ts"]
 }
